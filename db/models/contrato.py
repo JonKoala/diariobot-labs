@@ -9,5 +9,7 @@ class Contrato(Base):
 
     id = Column(Integer, primary_key=True)
     ObjetoContrato = Column(String)
+    ValorFirmado = Column(String)
 
     objeto = synonym('ObjetoContrato')
+    valor = synonym('ValorFirmado')

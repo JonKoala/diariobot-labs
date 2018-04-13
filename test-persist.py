@@ -1,6 +1,7 @@
 import inout
 from db import Dbinterface
 from db.models import Contrato, Resultado
+from pln import Preprocessor
 
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
@@ -9,33 +10,40 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import silhouette_score, calinski_harabaz_score
 from sklearn.preprocessing import Normalizer
 from sklearn.pipeline import Pipeline
+from sqlalchemy import cast, Numeric
 
 
 # getting data
 
-stopwords = inout.read_json('./stopwords')
+stopwords = inout.read_json('./stopwords') + inout.read_json('./stopwords.domain')
 appconfig = inout.read_yaml('./appconfig')
 
 dbi = Dbinterface(appconfig['db']['connectionstring'])
 
 print('retrieving data')
 with dbi.opensession() as session:
-    contratos = session.query(Contrato)
+    contratos = session.query(Contrato).filter(cast(Contrato.ValorFirmado, Numeric(14,2)) > 100000)
 
 ids = [contrato.id for contrato in contratos]
 documents = [contrato.objeto for contrato in contratos]
 
-random_state = appconfig['clustering']['tuning_randstate']
+random_state = 42
 
 
 # pipelines
 
+prep_tools = Preprocessor()
+
+# preprocess my stopwords. Scikit will remove stopwords AFTER the tokenization process (and i preprocess my tokens in the tokenization process)
+# source: https://github.com/scikit-learn/scikit-learn/blob/a24c8b46/sklearn/feature_extraction/text.py#L265
+stopwords = [prep_tools.stem(prep_tools.strip_accents(prep_tools.lowercase(token))) for token in stopwords]
+
 prep = Pipeline([
-    ('vectorizer', TfidfVectorizer(stop_words=stopwords, strip_accents='ascii', sublinear_tf=True)),
+    ('vectorizer', TfidfVectorizer(stop_words=stopwords, tokenizer=prep_tools.build_tokenizer(), sublinear_tf=True)),
     ('svd', TruncatedSVD(100, random_state=random_state)),
     ('normalizer', Normalizer(copy=False))
 ])
-clusterizer = MiniBatchKMeans(n_clusters=50, random_state=random_state)
+clusterizer = MiniBatchKMeans(n_clusters=25, random_state=random_state)
 
 
 # clustering
@@ -44,9 +52,6 @@ print('preprocessing')
 corpus = prep.fit_transform(documents)
 print('clustering')
 results = clusterizer.fit_predict(corpus)
-print('scoring')
-print('silhouette: {}'.format(silhouette_score(corpus, results, metric='euclidean', sample_size=20000)))
-print('calinski-harabaz: {}'.format(calinski_harabaz_score(corpus, results)))
 
 
 # persisting results
