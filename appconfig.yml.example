@@ -1,5 +1,10 @@
 db:
   connectionstring: '[CONNECTIONSTRING]'
 
+random_state: 42
+
+classification:
+  params_filepath: '[FILEPATH]'
+
 clustering:
-    tuning-randstate: 42
+  allowed_classes: []

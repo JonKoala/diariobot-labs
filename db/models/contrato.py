@@ -13,3 +13,5 @@ class Contrato(Base):
 
     objeto = synonym('ObjetoContrato')
     valor = synonym('ValorFirmado')
+
+    predicao = relationship('Predicao_Contrato', uselist=False)
