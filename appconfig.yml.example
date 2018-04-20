@@ -4,7 +4,9 @@ db:
 random_state: 42
 
 classification:
+  allowed_classes: []
+  min_value: 100000
   params_filepath: '[FILEPATH]'
 
 clustering:
-  allowed_classes: []
+  num_clusters: []

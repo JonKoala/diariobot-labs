@@ -31,11 +31,11 @@ with dbi.opensession() as session:
     blacklist = list(session.query(Diario_Backlisted.palavra))
 
     # get crowdsourced data
-    training_dataset = session.query(Diario_Classificacao).filter(Diario_Classificacao.classe_id.in_(appconfig['clustering']['allowed_classes']))
+    training_dataset = session.query(Diario_Classificacao).filter(Diario_Classificacao.classe_id.in_(appconfig['classification']['allowed_classes']))
     training_dataset = Dataset([DatasetEntry(publicacao.id, remove_numbers(publicacao.corpo), publicacao.classe_id) for publicacao in training_dataset])
 
     # get data to predict
-    contratos = session.query(Contrato).filter(cast(Contrato.ValorFirmado, Numeric(14,2)) > 100000)
+    contratos = session.query(Contrato).filter(cast(Contrato.ValorFirmado, Numeric(14,2)) > appconfig['classification']['min_value'])
 
 
 to_predict = [(contrato.id, contrato.objeto) for contrato in contratos]

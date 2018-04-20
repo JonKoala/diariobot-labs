@@ -26,9 +26,7 @@ print('retrieving data')
 with dbi.opensession() as session:
     blacklist = list(session.query(Diario_Backlisted.palavra))
 
-    contratos = session.query(Contrato) \
-        .filter(cast(Contrato.ValorFirmado, Numeric(14,2)) > 100000) \
-        .join(Contrato.predicao)
+    contratos = session.query(Contrato).join(Contrato.predicao)
 
 stopwords += [entry[0] for entry in blacklist]
 contratos = [{'_id': contrato.id, 'corpo': contrato.objeto, 'classe': contrato.predicao.classe} for contrato in contratos]
@@ -59,7 +57,7 @@ pipeline = Pipeline([
     ('vectorizer', TfidfVectorizer(stop_words=stopwords, tokenizer=prep_tools.build_tokenizer(), sublinear_tf=True)),
     ('svd', TruncatedSVD(100, random_state=appconfig['random_state'])),
     ('normalizer', Normalizer(copy=False)),
-    ('clustering', MiniBatchKMeans(n_clusters=50, random_state=appconfig['random_state']))
+    ('clustering', MiniBatchKMeans(random_state=appconfig['random_state']))
 ])
 
 
@@ -67,14 +65,15 @@ pipeline = Pipeline([
 # clustering routine
 
 print('clustering')
-for contratos in classes_contratos.values():
+for index, classe in enumerate(appconfig['classification']['allowed_classes']):
 
-    corpus = [contrato['corpo'] for contrato in contratos]
+    corpus = [contrato['corpo'] for contrato in classes_contratos[classe]]
 
+    pipeline.set_params(clustering__n_clusters=appconfig['clustering']['num_clusters'][index])
     predictions = pipeline.fit_predict(corpus)
 
     for index, prediction in enumerate(predictions):
-        contratos[index]['_cluster'] = np.asscalar(prediction)
+        classes_contratos[classe][index]['_cluster'] = np.asscalar(prediction)
 
 
 ##
